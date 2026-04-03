@@ -1,13 +1,13 @@
-const express = require('express');
-const { protect } = require('../middleware/auth');
-const { createCommentRules } = require('../middleware/validate');
-const {
+import express from 'express';
+import { protect } from '../middleware/auth.js';
+import { createCommentRules } from '../middleware/validate.js';
+import {
   getComments,
   createComment,
   deleteComment,
   toggleCommentLike,
   getCommentLikes,
-} = require('../controllers/commentController');
+} from '../controllers/commentController.js';
 
 const router = express.Router();
 
@@ -20,4 +20,4 @@ router.delete('/comments/:id', deleteComment);
 router.patch('/comments/:id/like', toggleCommentLike);
 router.get('/comments/:id/likes', getCommentLikes);
 
-module.exports = router;
+export default router;

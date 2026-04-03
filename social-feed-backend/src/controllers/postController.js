@@ -1,7 +1,7 @@
-const Post = require('../models/Post');
-const Comment = require('../models/Comment');
-const { cloudinary } = require('../config/cloudinary');
-const { createError } = require('../middleware/error');
+import Post from '../models/Post.js';
+import Comment from '../models/Comment.js';
+import { cloudinary } from '../config/cloudinary.js';
+import { createError } from '../middleware/error.js';
 
 const FEED_LIMIT = 10;
 
@@ -183,4 +183,4 @@ const getPostLikes = async (req, res, next) => {
   }
 };
 
-module.exports = { getFeed, createPost, getPost, deletePost, togglePostLike, getPostLikes };
+export { getFeed, createPost, getPost, deletePost, togglePostLike, getPostLikes };

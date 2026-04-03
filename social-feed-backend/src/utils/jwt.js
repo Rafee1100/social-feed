@@ -1,5 +1,5 @@
-const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
+import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 
 const ACCESS_COOKIE = 'accessToken';
 const REFRESH_COOKIE = 'refreshToken';
@@ -73,7 +73,7 @@ const verifyRefreshToken = (token) => {
   return payload;
 };
 
-module.exports = {
+export {
   ACCESS_COOKIE,
   REFRESH_COOKIE,
   ACCESS_EXPIRES_IN,

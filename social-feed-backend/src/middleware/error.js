@@ -38,4 +38,4 @@ const createError = (statusCode, message) => {
   return err;
 };
 
-module.exports = { errorHandler, createError };
+export { errorHandler, createError };

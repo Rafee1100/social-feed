@@ -1,6 +1,6 @@
-const Comment = require('../models/Comment');
-const Post = require('../models/Post');
-const { createError } = require('../middleware/error');
+import Comment from '../models/Comment.js';
+import Post from '../models/Post.js';
+import { createError } from '../middleware/error.js';
 
 /**
  * GET /api/posts/:id/comments
@@ -171,4 +171,4 @@ const getCommentLikes = async (req, res, next) => {
   }
 };
 
-module.exports = { getComments, createComment, deleteComment, toggleCommentLike, getCommentLikes };
+export { getComments, createComment, deleteComment, toggleCommentLike, getCommentLikes };

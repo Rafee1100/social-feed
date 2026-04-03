@@ -1,12 +1,12 @@
-const express = require('express');
-const cors = require('cors');
-const cookieParser = require('cookie-parser');
-const rateLimit = require('express-rate-limit');
+import cookieParser from 'cookie-parser';
+import cors from 'cors';
+import express from 'express';
 
-const authRoutes = require('./routes/auth');
-const postRoutes = require('./routes/posts');
-const commentRoutes = require('./routes/comments');
-const { errorHandler } = require('./middleware/error');
+import { globalLimiter } from './config/rateLimitConfig.js';
+import { errorHandler } from './middleware/error.js';
+import authRoutes from './routes/auth.js';
+import commentRoutes from './routes/comments.js';
+import postRoutes from './routes/posts.js';
 
 const app = express();
 
@@ -17,13 +17,7 @@ app.use(
   })
 );
 
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 300,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { message: 'Too many requests, please slow down.' },
-});
+
 app.use(globalLimiter);
 
 app.use(express.json());
@@ -42,4 +36,4 @@ app.use((req, res) => {
 
 app.use(errorHandler);
 
-module.exports = app;
+export default app;

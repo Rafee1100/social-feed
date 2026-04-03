@@ -1,5 +1,5 @@
-const User = require('../models/User');
-const {
+import User from '../models/User.js';
+import {
   signAccessToken,
   signRefreshToken,
   setAuthCookies,
@@ -8,8 +8,8 @@ const {
   hashToken,
   getRefreshMaxAgeMs,
   REFRESH_COOKIE,
-} = require('../utils/jwt');
-const { createError } = require('../middleware/error');
+} from '../utils/jwt.js';
+import { createError } from '../middleware/error.js';
 
 const INACTIVITY_TIMEOUT_MINUTES = Number(process.env.INACTIVITY_TIMEOUT_MINUTES || 15);
 const INACTIVITY_TIMEOUT_MS = INACTIVITY_TIMEOUT_MINUTES * 60 * 1000;
@@ -93,10 +93,10 @@ const logout = async (req, res, next) => {
   try {
     clearAuthCookies(res);
     if (req.user) {
-      req.user.refreshTokenHash = null;
-      req.user.refreshTokenExpiresAt = null;
-      req.user.lastActiveAt = null;
-      await req.user.save();
+      await User.updateOne(
+        { _id: req.user._id },
+        { $set: { refreshTokenHash: null, refreshTokenExpiresAt: null, lastActiveAt: null } }
+      );
     }
     res.json({ message: 'Logged out successfully.' });
   } catch (err) {
@@ -169,4 +169,4 @@ const getMe = (req, res) => {
   res.json({ user: req.user.toSafeObject() });
 };
 
-module.exports = { register, login, logout, refresh, getMe };
+export { register, login, logout, refresh, getMe };

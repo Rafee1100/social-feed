@@ -1,9 +1,5 @@
-const User = require('../models/User');
-const {
-  verifyAccessToken,
-  ACCESS_COOKIE,
-  clearAuthCookies,
-} = require('../utils/jwt');
+import User from '../models/User.js';
+import { verifyAccessToken, ACCESS_COOKIE, clearAuthCookies } from '../utils/jwt.js';
 
 const INACTIVITY_TIMEOUT_MINUTES = Number(process.env.INACTIVITY_TIMEOUT_MINUTES || 15);
 const INACTIVITY_TIMEOUT_MS = INACTIVITY_TIMEOUT_MINUTES * 60 * 1000;
@@ -36,8 +32,7 @@ const protect = async (req, res, next) => {
           .json({ message: 'Session expired due to inactivity. Please log in again.' });
       }
     }
-    user.lastActiveAt = new Date();
-    user.save().catch(() => {});
+    User.updateOne({ _id: user._id }, { $set: { lastActiveAt: new Date() } }).catch(() => {});
 
     req.user = user;
     next();
@@ -49,4 +44,4 @@ const protect = async (req, res, next) => {
   }
 };
 
-module.exports = { protect };
+export { protect };

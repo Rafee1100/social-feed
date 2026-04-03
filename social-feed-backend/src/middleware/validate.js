@@ -1,4 +1,4 @@
-const { z } = require('zod');
+import { z } from 'zod';
 
 const objectIdRegex = /^[a-fA-F0-9]{24}$/;
 
@@ -71,10 +71,4 @@ const loginRules = validateBody(loginSchema);
 const createPostRules = validateBody(createPostSchema);
 const createCommentRules = validateBody(createCommentSchema);
 
-module.exports = {
-  validateBody,
-  registerRules,
-  loginRules,
-  createPostRules,
-  createCommentRules,
-};
+export { validateBody, registerRules, loginRules, createPostRules, createCommentRules };
