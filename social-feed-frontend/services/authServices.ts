@@ -1,35 +1,30 @@
 import http from "./httpServices";
+import type { AuthResponse, LoginPayload, RegisterUserPayload } from "../types";
+import { normalizeUser, type ApiUser } from "./normalizers";
 
 const API_ENDPOINT = "/auth";
 
-export type RegisterPayload = {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
+type AuthApiResponse = { message: string; user: ApiUser };
+type MessageResponse = { message: string };
+
+export const registerUser = async (payload: RegisterUserPayload): Promise<AuthResponse> => {
+  const data = await http.post<AuthApiResponse, RegisterUserPayload>(
+    `${API_ENDPOINT}/register`,
+    payload
+  );
+  return { message: data.message, user: normalizeUser(data.user) };
 };
 
-export type LoginPayload = {
-  email: string;
-  password: string;
+export const login = async (payload: LoginPayload): Promise<AuthResponse> => {
+  const data = await http.post<AuthApiResponse, LoginPayload>(`${API_ENDPOINT}/login`, payload);
+  return { message: data.message, user: normalizeUser(data.user) };
 };
 
-export const registerUser = (userData: RegisterPayload) => {
-  return http.post(`${API_ENDPOINT}/register`, userData);
-};
+export const logout = () => http.post<MessageResponse>(`${API_ENDPOINT}/logout`);
 
-export const login = (loginData: LoginPayload) => {
-  return http.post(`${API_ENDPOINT}/login`, loginData);
-};
+export const refreshSession = () => http.post<MessageResponse>(`${API_ENDPOINT}/refresh`);
 
-export const logout = () => {
-  return http.post(`${API_ENDPOINT}/logout`);
-};
-
-export const refreshSession = () => {
-  return http.post(`${API_ENDPOINT}/refresh`);
-};
-
-export const getMe = () => {
-  return http.get(`${API_ENDPOINT}/me`);
+export const getMe = async (): Promise<{ user: AuthResponse["user"] }> => {
+  const data = await http.get<{ user: ApiUser }>(`${API_ENDPOINT}/me`);
+  return { user: normalizeUser(data.user) };
 };

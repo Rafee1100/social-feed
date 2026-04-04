@@ -1,15 +1,20 @@
 import http from "./httpServices";
+import type { LikeToggleResponse, User } from "../types";
+import { normalizeUser, type ApiUser } from "./normalizers";
 
-const API_ENDPOINT = '/comments'
+const API_ENDPOINT = "/comments";
 
-export const likeComment = (commentId: string) => {
-  return http.patch(`${API_ENDPOINT}/${commentId}/like`);
-}
+type LikesApiResponse = { likes: ApiUser[] };
 
-export const getCommentLikes = (commentId: string) => {
-  return http.get(`${API_ENDPOINT}/${commentId}/likes`);
-}
+type MessageResponse = { message: string };
 
-export const deleteComment = (commentId: string) => {
-  return http.delete(`${API_ENDPOINT}/${commentId}`);
-}
+export const likeComment = (commentId: string): Promise<LikeToggleResponse> =>
+  http.patch<LikeToggleResponse>(`${API_ENDPOINT}/${commentId}/like`);
+
+export const getCommentLikes = async (commentId: string): Promise<User[]> => {
+  const data = await http.get<LikesApiResponse>(`${API_ENDPOINT}/${commentId}/likes`);
+  return data.likes.map(normalizeUser);
+};
+
+export const deleteComment = (commentId: string): Promise<MessageResponse> =>
+  http.delete<MessageResponse>(`${API_ENDPOINT}/${commentId}`);
