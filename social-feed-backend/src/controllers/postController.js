@@ -2,6 +2,7 @@ import Post from '../models/Post.js';
 import Comment from '../models/Comment.js';
 import { cloudinary } from '../config/cloudinary.js';
 import { createError } from '../middleware/error.js';
+import { Readable } from 'stream';
 
 const FEED_LIMIT = 10;
 
@@ -27,11 +28,22 @@ const getFeed = async (req, res, next) => {
 
     const hasMore = posts.length > FEED_LIMIT;
     if (hasMore) posts.pop();
+    
+    const postIds = posts.map((p) => p._id);
+    const commentCountsAgg = await Comment.aggregate([
+      { $match: { post: { $in: postIds } } },
+      { $group: { _id: '$post', count: { $sum: 1 } } },
+    ]);
+    const commentCountByPostId = commentCountsAgg.reduce((acc, row) => {
+      acc[row._id.toString()] = row.count;
+      return acc;
+    }, {});
 
     const currentUserId = req.user._id.toString();
     const postsWithMeta = posts.map((post) => ({
       ...post,
       likeCount: post.likes.length,
+      commentCount: commentCountByPostId[post._id.toString()] ?? 0,
       isLiked: post.likes.some((id) => id.toString() === currentUserId),
       likes: undefined,
     }));
@@ -59,18 +71,74 @@ const createPost = async (req, res, next) => {
       visibility: visibility || 'public',
     };
 
+    let uploadedPublicId = null;
+
+    if (process.env.NODE_ENV !== 'production' && process.env.DEBUG_UPLOADS === '1') {
+      if (req.file) {
+        console.log('[createPost] file meta:', {
+          fieldname: req.file.fieldname,
+          originalname: req.file.originalname,
+          mimetype: req.file.mimetype,
+          size: req.file.size,
+        });
+      }
+    }
+
+    if (!req.file && Object.prototype.hasOwnProperty.call(req.body || {}, 'image')) {
+      return next(
+        createError(
+          400,
+          "No file received. Send multipart/form-data with field name 'image'."
+        )
+      );
+    }
+
     if (req.file) {
-      postData.imageUrl = req.file.path;
-      postData.imagePublicId = req.file.filename;
+      if (!req.file.buffer) {
+        return next(createError(400, 'Invalid image upload.'));
+      }
+
+      const uploadResult = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder: 'social-feed/posts',
+            transformation: [{ width: 1200, crop: 'limit', quality: 'auto' }],
+            resource_type: 'image',
+          },
+          (err, result) => {
+            if (err) return reject(err);
+            return resolve(result);
+          }
+        );
+
+        Readable.from([req.file.buffer]).pipe(stream);
+      });
+
+      postData.imageUrl = uploadResult?.secure_url || uploadResult?.url || null;
+      uploadedPublicId = uploadResult?.public_id || null;
+      postData.imagePublicId = uploadedPublicId;
+
+      if (!postData.imageUrl) {
+        return next(createError(500, 'Image upload failed.'));
+      }
     }
 
     const post = await Post.create(postData);
     await post.populate('author', 'firstName lastName');
 
-    res.status(201).json({ post });
+    res.status(201).json({
+      post: {
+        ...post.toObject(),
+        likeCount: post.likes.length,
+        commentCount: 0,
+        isLiked: false,
+        likes: undefined,
+      },
+    });
   } catch (err) {
-    if (req.file?.filename) {
-      await cloudinary.uploader.destroy(req.file.filename).catch(() => {});
+    // If Cloudinary upload succeeded but the DB write failed, clean up the uploaded asset.
+    if (uploadedPublicId) {
+      await cloudinary.uploader.destroy(uploadedPublicId).catch(() => {});
     }
     next(err);
   }
@@ -90,11 +158,13 @@ const getPost = async (req, res, next) => {
       return next(createError(403, 'This post is private.'));
     }
 
+    const commentCount = await Comment.countDocuments({ post: post._id });
     const currentUserId = req.user._id.toString();
     res.json({
       post: {
         ...post.toObject(),
         likeCount: post.likes.length,
+        commentCount,
         isLiked: post.likes.some((id) => id.toString() === currentUserId),
         likes: undefined,
       },
@@ -183,4 +253,53 @@ const getPostLikes = async (req, res, next) => {
   }
 };
 
-export { getFeed, createPost, getPost, deletePost, togglePostLike, getPostLikes };
+/**
+ * PATCH /api/posts/:id
+ * Updates a post (content/visibility). Owner only.
+ */
+const updatePost = async (req, res, next) => {
+  try {
+    const post = await Post.findById(req.params.id).populate('author', 'firstName lastName');
+    if (!post) return next(createError(404, 'Post not found.'));
+
+    if (post.author._id.toString() !== req.user._id.toString()) {
+      return next(createError(403, 'You can only edit your own posts.'));
+    }
+
+    const { content, visibility } = req.body;
+
+    if (typeof content === 'string') {
+      const trimmed = content.trim();
+      if (!trimmed && !post.imageUrl) {
+        return next(createError(400, 'Post content cannot be empty.'));
+      }
+      post.content = trimmed;
+    }
+
+    if (typeof visibility === 'string') {
+      if (!['public', 'private'].includes(visibility)) {
+        return next(createError(400, 'Invalid visibility.'));
+      }
+      post.visibility = visibility;
+    }
+
+    await post.save();
+
+    const commentCount = await Comment.countDocuments({ post: post._id });
+    const currentUserId = req.user._id.toString();
+
+    res.json({
+      post: {
+        ...post.toObject(),
+        likeCount: post.likes.length,
+        commentCount,
+        isLiked: post.likes.some((id) => id.toString() === currentUserId),
+        likes: undefined,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export { getFeed, createPost, getPost, updatePost, deletePost, togglePostLike, getPostLikes };

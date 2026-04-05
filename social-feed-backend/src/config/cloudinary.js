@@ -1,5 +1,4 @@
 import cloudinaryModule from 'cloudinary';
-import CloudinaryStorage from 'multer-storage-cloudinary';
 import multer from 'multer';
 
 const cloudinary = cloudinaryModule.v2;
@@ -10,17 +9,8 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-const storage = new CloudinaryStorage({
-  cloudinary,
-  params: {
-    folder: 'social-feed/posts',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
-    transformation: [{ width: 1200, crop: 'limit', quality: 'auto' }],
-  },
-});
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (!file.mimetype.startsWith('image/')) {
