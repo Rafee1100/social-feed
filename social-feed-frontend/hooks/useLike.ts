@@ -4,9 +4,10 @@ import {
   useQueryClient,
   InfiniteData,
 } from "@tanstack/react-query";
+import { toast } from "react-toastify";
 import * as commentServices from "@/services/commentServices";
 import * as postServices from "@/services/postServices";
-import type { FeedPage, Comment, User } from "../types";
+import type { FeedPage, Comment, User, LikeToggleResponse } from "../types";
 import { FEED_KEY } from "./usePosts";
 import { COMMENTS_KEY } from "./useComments";
 
@@ -30,6 +31,26 @@ const updateCommentLikes = (comments: Comment[], targetId: string) => {
       replies: (comment.replies ?? []).map((reply) =>
         reply.id === targetId
           ? { ...reply, ...toggleLike(reply.likedByMe, reply.likeCount) }
+          : reply,
+      ),
+    };
+  });
+};
+
+const hanldeCommentLike = (
+  comments: Comment[],
+  targetId: string,
+  result: LikeToggleResponse
+) => {
+  return comments.map((comment) => {
+    if (comment.id === targetId) {
+      return { ...comment, likedByMe: result.isLiked, likeCount: result.likeCount };
+    }
+    return {
+      ...comment,
+      replies: (comment.replies ?? []).map((reply) =>
+        reply.id === targetId
+          ? { ...reply, likedByMe: result.isLiked, likeCount: result.likeCount }
           : reply,
       ),
     };
@@ -69,6 +90,25 @@ export const usePostLike = () => {
       if (context?.previousFeed) {
         queryClient.setQueryData(FEED_KEY, context.previousFeed);
       }
+      toast.error("Failed to like post.");
+    },
+
+    onSuccess: (data, postId) => {
+      
+      queryClient.setQueryData<InfiniteData<FeedPage>>(FEED_KEY, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            posts: page.posts.map((post) =>
+              post.id === postId
+                ? { ...post, likedByMe: data.isLiked, likeCount: data.likeCount }
+                : post,
+            ),
+          })),
+        };
+      });
     },
   });
 };
@@ -96,6 +136,15 @@ export const useCommentLike = (postId: string) => {
       if (context?.previousComments) {
         queryClient.setQueryData(commentsKey, context.previousComments);
       }
+      toast.error("Failed to like comment.");
+    },
+
+    onSuccess: (data, commentId) => {
+      
+      queryClient.setQueryData<Comment[]>(commentsKey, (old) => {
+        if (!old) return old;
+        return hanldeCommentLike(old, commentId, data);
+      });
     },
   });
 };
@@ -104,8 +153,7 @@ export const usePostLikedBy = (postId: string, enabled: boolean) => {
   return useQuery<User[]>({
     queryKey: ["post-likes", postId],
     queryFn: async () => {
-      const { data } = await postServices.getPostLikes(postId);
-      return data.likes ?? data;
+      return postServices.getPostLikes(postId);
     },
     enabled,
     staleTime: LIKE_STALE_TIME_MS,
@@ -116,8 +164,7 @@ export const useCommentLikedBy = (commentId: string, enabled: boolean) => {
   return useQuery<User[]>({
     queryKey: ["comment-likes", commentId],
     queryFn: async () => {
-      const { data } = await commentServices.getCommentLikes(commentId);
-      return data.likes ?? data;
+      return commentServices.getCommentLikes(commentId);
     },
     enabled,
     staleTime: LIKE_STALE_TIME_MS,

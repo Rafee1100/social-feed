@@ -3,15 +3,38 @@ import { toast } from 'react-toastify';
 import * as commentService from '@/services/commentServices';
 import * as postServices from '@/services/postServices';
 import type { Comment, CommentPayload } from '../types';
+import type { FeedPage } from '../types';
+import type { InfiniteData } from '@tanstack/react-query';
+import { FEED_KEY } from './usePosts';
 
 export const COMMENTS_KEY = ['comments'] as const;
+
+const postCommentCount = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  postId: string,
+  delta: number
+) => {
+  queryClient.setQueryData<InfiniteData<FeedPage>>(FEED_KEY, (old) => {
+    if (!old) return old;
+    return {
+      ...old,
+      pages: old.pages.map((page) => ({
+        ...page,
+        posts: page.posts.map((post) =>
+          post.id === postId
+            ? { ...post, commentCount: Math.max(0, post.commentCount + delta) }
+            : post
+        ),
+      })),
+    };
+  });
+};
 
 export const useComments = (postId: string, enabled: boolean) => {
   return useQuery<Comment[]>({
     queryKey: [...COMMENTS_KEY, postId],
     queryFn: async () => {
-      const { data } = await postServices.getPostComments(postId);
-      return data.comments ?? data;
+      return postServices.getPostComments(postId);
     },
     enabled,
     staleTime: 30 * 1000,
@@ -24,11 +47,14 @@ export const useCreateComment = (postId: string) => {
 
   return useMutation({
     mutationFn: async (payload: CommentPayload) => {
-      const { data } = await postServices.createPostComment(postId, payload);
-      return data.comment ?? data;
+      return postServices.addComment(postId, payload);
     },
 
     onSuccess: (newComment: Comment) => {
+      
+      if (!newComment.parentCommentId) {
+        postCommentCount(queryClient, postId, 1);
+      }
       queryClient.setQueryData<Comment[]>(commentsKey, (old = []) => {
         if (!newComment.replies && !('parentCommentId' in newComment)) {
           return [...old, newComment];
@@ -55,6 +81,12 @@ export const useDeleteComment = (postId: string) => {
       await queryClient.cancelQueries({ queryKey: commentsKey });
       const previous = queryClient.getQueryData<Comment[]>(commentsKey);
 
+      
+      const wasTopLevel = (previous ?? []).some((c) => c.id === commentId);
+      if (wasTopLevel) {
+        postCommentCount(queryClient, postId, -1);
+      }
+
       queryClient.setQueryData<Comment[]>(commentsKey, (old = []) =>
         old
           .filter((c) => c.id !== commentId)
@@ -64,12 +96,15 @@ export const useDeleteComment = (postId: string) => {
           }))
       );
 
-      return { previous };
+      return { previous, wasTopLevel };
     },
 
     onError: (_err, _commentId, context) => {
       if (context?.previous) {
         queryClient.setQueryData(commentsKey, context.previous);
+      }
+      if (context?.wasTopLevel) {
+        postCommentCount(queryClient, postId, 1);
       }
       toast.error('Failed to delete comment.');
     },

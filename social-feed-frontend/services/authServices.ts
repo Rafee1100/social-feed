@@ -1,6 +1,6 @@
 import http from "./httpServices";
 import type { AuthResponse, LoginPayload, RegisterUserPayload } from "../types";
-import { normalizeUser, type ApiUser } from "./normalizers";
+import { mapToUserModel, type ApiUser } from "./normalizers";
 
 const API_ENDPOINT = "/auth";
 
@@ -12,12 +12,12 @@ export const registerUser = async (payload: RegisterUserPayload): Promise<AuthRe
     `${API_ENDPOINT}/register`,
     payload
   );
-  return { message: data.message, user: normalizeUser(data.user) };
+  return { message: data.message, user: mapToUserModel(data.user) };
 };
 
 export const login = async (payload: LoginPayload): Promise<AuthResponse> => {
   const data = await http.post<AuthApiResponse, LoginPayload>(`${API_ENDPOINT}/login`, payload);
-  return { message: data.message, user: normalizeUser(data.user) };
+  return { message: data.message, user: mapToUserModel(data.user) };
 };
 
 export const logout = () => http.post<MessageResponse>(`${API_ENDPOINT}/logout`);
@@ -26,5 +26,5 @@ export const refreshSession = () => http.post<MessageResponse>(`${API_ENDPOINT}/
 
 export const getMe = async (): Promise<{ user: AuthResponse["user"] }> => {
   const data = await http.get<{ user: ApiUser }>(`${API_ENDPOINT}/me`);
-  return { user: normalizeUser(data.user) };
+  return { user: mapToUserModel(data.user) };
 };

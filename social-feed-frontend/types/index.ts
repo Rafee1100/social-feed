@@ -87,3 +87,16 @@ export interface RefreshResponse {
 export interface LogoutResponse {
   message: string;
 }
+
+export type PublicStory = {
+  name: string;
+  image: string;
+  miniImage: string;
+};
+
+export type MobileStoryType = "your" | "active" | "inactive" | "normal";
+export type MobileStory = {
+  type: MobileStoryType;
+  label: string;
+  image: string;
+};

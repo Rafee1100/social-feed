@@ -9,9 +9,9 @@ import type {
   User,
 } from "../types";
 import {
-  normalizeComment,
-  normalizePost,
-  normalizeUser,
+  mapToCommentModel,
+  mapToPostModel,
+  mapToUserModel,
   type ApiComment,
   type ApiPost,
   type ApiUser,
@@ -31,7 +31,7 @@ export const getPosts = async (cursor?: string): Promise<FeedPage> => {
   });
 
   return {
-    posts: data.posts.map(normalizePost),
+    posts: data.posts.map(mapToPostModel),
     nextCursor: data.nextCursor,
     hasMore: data.hasMore,
   };
@@ -45,11 +45,9 @@ export const createPost = async (postData: PostPayload): Promise<Post> => {
     formData.append("image", postData.image);
   }
 
-  const data = await http.post<PostApiResponse, FormData>(API_ENDPOINT, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  const data = await http.post<PostApiResponse, FormData>(API_ENDPOINT, formData);
 
-  return normalizePost(data.post);
+  return mapToPostModel(data.post);
 };
 
 export const deletePost = (postId: string) =>
@@ -57,15 +55,26 @@ export const deletePost = (postId: string) =>
 
 export const getPost = async (postId: string): Promise<Post> => {
   const data = await http.get<PostApiResponse>(`${API_ENDPOINT}/${postId}`);
-  return normalizePost(data.post);
+  return mapToPostModel(data.post);
+};
+
+export const updatePost = async (
+  postId: string,
+  payload: Pick<PostPayload, "content" | "visibility">
+): Promise<Post> => {
+  const data = await http.patch<PostApiResponse, typeof payload>(
+    `${API_ENDPOINT}/${postId}`,
+    payload
+  );
+  return mapToPostModel(data.post);
 };
 
 export const getPostComments = async (postId: string): Promise<Comment[]> => {
   const data = await http.get<CommentsApiResponse>(`${API_ENDPOINT}/${postId}/comments`);
-  return data.comments.map(normalizeComment);
+  return data.comments.map(mapToCommentModel);
 };
 
-export const createPostComment = async (
+export const addComment = async (
   postId: string,
   commentData: CommentPayload
 ): Promise<Comment> => {
@@ -73,12 +82,12 @@ export const createPostComment = async (
     `${API_ENDPOINT}/${postId}/comments`,
     commentData
   );
-  return normalizeComment(data.comment);
+  return mapToCommentModel(data.comment);
 };
 
 export const getPostLikes = async (postId: string): Promise<User[]> => {
   const data = await http.get<LikesApiResponse>(`${API_ENDPOINT}/${postId}/likes`);
-  return data.likes.map(normalizeUser);
+  return data.likes.map(mapToUserModel);
 };
 
 export const likePost = (postId: string): Promise<LikeToggleResponse> =>

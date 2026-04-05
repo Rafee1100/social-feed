@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "../store/authStore";
 import * as authService from "@/services/authServices";
 import type { LoginPayload, RegisterUserPayload } from "../types";
+import { toast } from "react-toastify";
 
 export const AUTH_KEY = ["me"] as const;
 
@@ -38,9 +39,13 @@ export const useLogin = () => {
   return useMutation({
     mutationFn: (payload: LoginPayload) => authService.login(payload),
     onSuccess: (data) => {
+      toast.success("Logged in successfully.");
       setUser(data.user);
       queryClient.setQueryData(AUTH_KEY, { user: data.user });
       router.push("/feed");
+    },
+    onError: () => {
+      toast.error("Login failed. Please check your credentials.");
     },
   });
 };
@@ -53,9 +58,13 @@ export const useRegister = () => {
   return useMutation({
     mutationFn: (payload: RegisterUserPayload) => authService.registerUser(payload),
     onSuccess: (data) => {
+      toast.success("Account created successfully.");
       setUser(data.user);
       queryClient.setQueryData(AUTH_KEY, { user: data.user });
       router.push("/feed");
+    },
+    onError: () => {
+      toast.error("Registration failed. Please try again.");
     },
   });
 };
@@ -68,9 +77,13 @@ export const useLogout = () => {
   return useMutation({
     mutationFn: authService.logout,
     onSuccess: () => {
+      toast.success("Logged out.");
       clearUser();
       queryClient.clear();
-      router.push("/login");
+      router.push("/auth/login");
+    },
+    onError: () => {
+      toast.error("Logout failed. Please try again.");
     },
   });
 };

@@ -33,7 +33,7 @@ export type ApiComment = {
   parentComment?: string | null;
 };
 
-export const normalizeUser = (user: ApiUser): User => ({
+export const mapToUserModel = (user: ApiUser): User => ({
   id: user._id,
   firstName: user.firstName,
   lastName: user.lastName,
@@ -41,9 +41,9 @@ export const normalizeUser = (user: ApiUser): User => ({
   avatarUrl: user.avatarUrl,
 });
 
-export const normalizePost = (post: ApiPost): Post => ({
+export const mapToPostModel = (post: ApiPost): Post => ({
   id: post._id,
-  author: normalizeUser(post.author),
+  author: mapToUserModel(post.author),
   content: post.content ?? post.text ?? "",
   imageUrl: post.imageUrl ?? undefined,
   visibility: post.visibility,
@@ -53,13 +53,13 @@ export const normalizePost = (post: ApiPost): Post => ({
   createdAt: post.createdAt,
 });
 
-export const normalizeComment = (comment: ApiComment): Comment => ({
+export const mapToCommentModel = (comment: ApiComment): Comment => ({
   id: comment._id,
-  author: normalizeUser(comment.author),
+  author: mapToUserModel(comment.author),
   content: comment.content ?? comment.text ?? "",
   likeCount: comment.likeCount ?? 0,
   likedByMe: comment.isLiked ?? false,
   createdAt: comment.createdAt,
-  replies: comment.replies?.map(normalizeComment) ?? [],
+  replies: comment.replies?.map(mapToCommentModel) ?? [],
   parentCommentId: comment.parentComment ?? undefined,
 });
