@@ -86,7 +86,7 @@ it("useRegister sets the user and redirects to /feed", async () => {
   expect(pushMock).toHaveBeenCalledWith("/feed");
 });
 
-it("useLogout clears user and redirects to /login", async () => {
+it("useLogout clears user and redirects to /auth/login", async () => {
   vi.mocked(authService.logout).mockResolvedValueOnce({ message: "ok" });
   useAuthStore.setState({
     user: {
@@ -105,6 +105,6 @@ it("useLogout clears user and redirects to /login", async () => {
   });
 
   expect(useAuthStore.getState().user).toBeNull();
-  expect(pushMock).toHaveBeenCalledWith("/login");
+  expect(pushMock).toHaveBeenCalledWith("/auth/login");
   expect(toast.success).toHaveBeenCalled();
 });

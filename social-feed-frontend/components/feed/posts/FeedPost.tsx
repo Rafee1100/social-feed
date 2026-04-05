@@ -18,7 +18,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./FeedPost.module.css";
 import Link from "next/link";
 import PostComments from "../comment/PostComments";
-import PostLikesModal from "../likes/PostLikesModal";
+import LikesModal from "../likes/LikesModal";
 
 type FeedPostProps = {
   post: Post;
@@ -228,10 +228,11 @@ const FeedPost = ({ post }: FeedPostProps) => {
           </button>
         </div>
         <div className={styles.reactsMeta}>
-          <p className={styles.commentsMeta}>
-            <a href="#0">
-              <span>{post.commentCount}</span> Comment
-            </a>
+          <p className={styles.commentsMeta} onClick={() => setIsCommentsOpen((v) => !v)}>
+            <span>
+              {post.commentCount}
+            </span>{" "}
+            Comment
           </p>
           <p className={styles.sharesMeta}>
             <span>0</span> Share
@@ -276,7 +277,7 @@ const FeedPost = ({ post }: FeedPostProps) => {
         </button>
       </div>
 
-      <PostLikesModal
+      <LikesModal
         open={isLikesOpen}
         onClose={() => setIsLikesOpen(false)}
         users={likedByUsers}
@@ -286,6 +287,7 @@ const FeedPost = ({ post }: FeedPostProps) => {
             ? likedByQuery.error.message
             : null
         }
+        ariaLabel="Post likes"
       />
 
       <PostComments postId={post.id} open={isCommentsOpen} />

@@ -3,11 +3,12 @@
 import type { Comment } from "@/types";
 import styles from "./CommentItem.module.css";
 import { useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { useCommentLike } from "@/hooks/useLike";
+import { useCommentLike, useCommentLikedBy } from "@/hooks/useLike";
 import Image from "next/image";
 import Link from "next/link";
 import { Heart, ThumbsUp } from "lucide-react";
 import CommentComposer from "./CommentComposer";
+import LikesModal from "../likes/LikesModal";
 
 type CommentItemProps = {
   postId: string;
@@ -37,8 +38,10 @@ const onActivate =
 
 const CommentItem = ({ postId, comment, depth }: CommentItemProps) => {
   const [replyOpen, setReplyOpen] = useState(false);
+  const [likesOpen, setLikesOpen] = useState(false);
   const canReply = depth === 0;
   const commentLike = useCommentLike(postId);
+  const likedByQuery = useCommentLikedBy(comment.id, likesOpen);
 
   const authorName = useMemo(
     () => `${comment.author.firstName} ${comment.author.lastName}`.trim(),
@@ -48,6 +51,7 @@ const CommentItem = ({ postId, comment, depth }: CommentItemProps) => {
 
   const toggleReply = () => setReplyOpen((v) => !v);
   const like = () => commentLike.mutate(comment.id);
+  const openLikes = () => setLikesOpen(true);
 
   return (
     <div className={`${styles.root} ${depth === 1 ? styles.replyIndent : ""}`}>
@@ -80,7 +84,13 @@ const CommentItem = ({ postId, comment, depth }: CommentItemProps) => {
               </p>
             </div>
 
-            <div className={styles.totalReactions} role="button" tabIndex={0}>
+            <button
+              type="button"
+              className={styles.totalReactions}
+              onClick={openLikes}
+              onKeyDown={onActivate(openLikes)}
+              aria-label="View comment likes"
+            >
               <div className={styles.totalReact}>
                 <span className={styles.reactionLike}>
                   <ThumbsUp color="blue" height={15} />
@@ -90,7 +100,7 @@ const CommentItem = ({ postId, comment, depth }: CommentItemProps) => {
                 </span>
               </div>
               <span className={styles.total}>{comment.likeCount}</span>
-            </div>
+            </button>
 
             <div className={styles.commentReply}>
               <div className={styles.commentReplyNum}>
@@ -100,10 +110,11 @@ const CommentItem = ({ postId, comment, depth }: CommentItemProps) => {
                       role="button"
                       tabIndex={0}
                       aria-pressed={comment.likedByMe}
+                      className={comment.likedByMe ? styles.replyActionActive : undefined}
                       onClick={like}
                       onKeyDown={onActivate(like)}
                     >
-                      Like.
+                      {comment.likedByMe ? "Liked." : "Like."}
                     </span>
                   </li>
                   <li>
@@ -149,6 +160,15 @@ const CommentItem = ({ postId, comment, depth }: CommentItemProps) => {
           )}
         </div>
       </div>
+
+      <LikesModal
+        open={likesOpen}
+        onClose={() => setLikesOpen(false)}
+        users={likedByQuery.data ?? []}
+        isLoading={likedByQuery.isLoading}
+        error={likedByQuery.error instanceof Error ? likedByQuery.error.message : null}
+        ariaLabel="Comment likes"
+      />
     </div>
   );
 };

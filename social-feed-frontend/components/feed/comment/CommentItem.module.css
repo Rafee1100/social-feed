@@ -86,6 +86,8 @@
   padding: 2px 8px 2px 12px;
   border-radius: 12px;
   cursor: pointer;
+  border: none;
+  font: inherit;
 }
 
 .totalReactions span {
@@ -146,6 +148,10 @@
 
 .commentReplyList li span:hover {
   text-decoration: underline;
+}
+
+.replyActionActive {
+  color: var(--color5) !important;
 }
 
 .timeLink {
