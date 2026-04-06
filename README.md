@@ -2,6 +2,9 @@
 
 This repository contains a social feed application built by converting the provided HTML/CSS designs into a component-based Next.js app, backed by an Express + MongoDB API. The main goals were: match the provided UI, keep auth secure and smooth, and shape the API in a way that can scale to large reads (cursor pagination + indexes).
 
+## Live Demo
+- Frontend (Vercel): `https://social-feed-theta-orpin.vercel.app`
+
 ## Repo Structure
 
 - `social-feed-frontend/`: Next.js (App Router) frontend
@@ -126,11 +129,4 @@ cd social-feed-frontend
 yarn test
 ```
 
-## Notes / Constraints / Future Improvements
 
-- Public posts are currently “public to all authenticated users” because the posts API is protected by auth middleware.
-- For “millions-scale” growth:
-  - Move likes into a separate collection to avoid unbounded arrays on the Post/Comment documents.
-  - Denormalize and maintain `likeCount` and `commentCount` on Post to avoid aggregations on hot read paths.
-  - Add caching for feed pages and “who liked” lists where appropriate.
-  - Add security headers (CSP, etc.) at the edge and finalize a strict production CORS allowlist.
