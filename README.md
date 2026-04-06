@@ -1,81 +1,136 @@
 ## Social Feed (Next.js + Express)
 
-This repo contains a simple social feed application (frontend + backend) built from the provided HTML/CSS designs, with a focus on cookie-based JWT auth, protected routes, and a scalable feed API shape (cursor pagination).
+This repository contains a social feed application built by converting the provided HTML/CSS designs into a component-based Next.js app, backed by an Express + MongoDB API. The main goals were: match the provided UI, keep auth secure and smooth, and shape the API in a way that can scale to large reads (cursor pagination + indexes).
 
-### What’s Built
+## Repo Structure
 
-**Frontend** (`social-feed-frontend/`)
-- Next.js (App Router) UI converted from the provided HTML/CSS.
-- Auth flow (login/register/logout) using **HttpOnly cookies** (no localStorage tokens).
-- Protected `/feed` route.
-- Feed:
-  - Infinite/cursor-based posts fetching via React Query.
-  - Create post with optional image upload.
-  - Public/Private visibility selector.
-  - Like post + “who liked” modal.
-  - Comments + replies, like comments + “who liked” modal (reuses the same modal component).
-- Unit tests with Vitest for hooks/store.
+- `social-feed-frontend/`: Next.js (App Router) frontend
+- `social-feed-backend/`: Express API + MongoDB (Mongoose)
 
-**Backend** (`social-feed-backend/`)
-- Express + MongoDB (Mongoose).
-- JWT auth:
-  - Access + Refresh tokens stored in **HttpOnly cookies**.
-  - Refresh rotation and inactivity logout (default **15 minutes**).
-- Posts:
-  - `public` posts visible to everyone **who is authenticated**.
-  - `private` posts visible only to the author.
-  - Cursor-based pagination (by `createdAt`) and indexes for feed queries.
-- Image upload support (multer + Cloudinary).
-- Unit tests with Jest (controllers/middleware/utils) using mocks (no DB/Cloudinary required).
+## What I Built
 
-### Key Decisions (Security + UX + Performance)
-- **HttpOnly cookies** for JWTs to reduce XSS token theft risk and keep UX smooth (silent refresh).
-- **Cursor pagination** for the feed to avoid expensive `skip/limit` at scale.
-- **Visibility enforcement in the backend** (not only frontend filtering) to prevent data leaks.
-- **Component-scoped CSS Modules** where possible; shared legacy template utilities remain in global CSS.
+### Frontend (`social-feed-frontend/`)
 
-### Running Locally
+- **Next.js App Router pages** for login, registration, and the feed.
+- **Component-based UI conversion** from the provided HTML/CSS.
+- **Auth flow**: login/register/logout with toast feedback.
+- **Protected feed**: `/feed` is only accessible when the user has an auth session.
+- **Feed features**:
+  - Fetch posts using React Query with cursor pagination (infinite scrolling shape).
+  - Create a post with optional image upload.
+  - Post visibility selector: `public` or `private`.
+  - Like posts and view “who liked” in a modal.
+  - Comments and replies (nested), like comments, and view “who liked” in the same reusable modal.
+- **Unit tests** using Vitest for hooks and store behavior.
 
-**1) Backend**
+### Backend (`social-feed-backend/`)
+
+- **Express API** with a clean `src/app.js` and `src/server.js`.
+- **MongoDB + Mongoose models** for users, posts, and comments.
+- **Request validation** using Zod middleware (`src/middleware/validate.js`).
+- **JWT cookie auth**:
+  - Access token + refresh token stored as **HttpOnly cookies**.
+  - Refresh rotation endpoint (`POST /api/auth/refresh`).
+  - Inactivity logout: if inactive for `INACTIVITY_TIMEOUT_MINUTES` (default 15), the session is invalidated.
+- **Posts API**:
+  - Cursor-based feed endpoint (`GET /api/posts`) sorted by `createdAt`.
+  - Visibility rules enforced server-side:
+    - `public`: visible to all authenticated users.
+    - `private`: visible only to the author.
+  - Like/unlike toggles and “who liked” endpoints.
+- **Comments API**:
+  - Fetch comments for a post with replies nested.
+  - Create top-level comments and replies (reply-to-reply is blocked).
+  - Like/unlike comments and “who liked” endpoints.
+- **Image uploads**:
+  - Multer parses `multipart/form-data` (`image` field).
+  - Uploaded to Cloudinary and stored as `imageUrl` + `imagePublicId` on the post.
+- **Unit tests** using Jest (controllers/middleware/utils) with module mocks (no DB or Cloudinary required).
+
+## Architecture & Data Flow
+
+### Auth Architecture (Security-First)
+
+- Tokens are **not stored in localStorage**. The backend sets HttpOnly cookies, which are:
+  - inaccessible to JavaScript (reduces XSS token theft risk)
+  - automatically sent by the browser on requests
+- The frontend uses a single axios instance configured with `withCredentials: true`.
+- When an API call returns `401`, the frontend attempts a silent refresh (`POST /auth/refresh`) and retries the original request.
+- If refresh fails, the user is redirected to `/auth/login`.
+
+### Deployment Architecture (Vercel + Render)
+
+When frontend and backend are on different domains, cookies set by the backend would normally be stored on the backend’s domain and not be visible to the frontend domain. To keep cookie auth working cleanly, the frontend uses a **same-origin proxy**:
+
+- Browser calls `https://<vercel-domain>/api/proxy/...`
+- Next.js route handler forwards that request to `https://<render-domain>/api/...`
+- `Set-Cookie` is forwarded back so cookies are stored for the Vercel domain
+
+This keeps auth cookies consistent and allows server components (like the `(main)` layout) to read cookies reliably.
+
+### Feed Architecture (Performance-First)
+
+- The feed uses **cursor pagination** using `createdAt` (instead of offset/skip), which is significantly more stable and efficient at scale.
+- MongoDB indexes are added to support the feed query pattern.
+- Visibility rules are applied in the feed query itself to prevent private data leaks.
+
+## Key Decisions
+
+- **HttpOnly cookies for auth**: stronger security posture than localStorage; better UX with silent refresh.
+- **Server-side visibility enforcement**: the backend is the source of truth; the UI cannot “accidentally” leak private posts.
+- **Cursor pagination**: better than `skip/limit` for large datasets and avoids performance degradation as page number grows.
+- **Reusable “Likes” modal**: one modal component used for post likes and comment likes.
+- **Zod validation**: consistent request validation with clear errors.
+- **Unit tests with mocks**: fast tests that validate business logic without requiring a database or external services.
+
+## Running Locally
+
+### Backend
 ```bash
 cd social-feed-backend
 yarn
 yarn dev
 ```
 
-Environment: `social-feed-backend/.env.example` shows expected variables. At minimum you need:
+Backend env: see `social-feed-backend/.env.example`. Required variables:
 - `MONGODB_URI`
 - `JWT_SECRET`
 - `JWT_ACCESS_EXPIRES_IN` (e.g. `15m`)
 - `JWT_REFRESH_EXPIRES_IN` (e.g. `30d`)
 - `INACTIVITY_TIMEOUT_MINUTES` (e.g. `15`)
 - `CLIENT_URL` (e.g. `http://localhost:3000`)
-- Cloudinary: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (required for image uploads)
+- Cloudinary (required for image uploads): `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
 
-**2) Frontend**
+### Frontend
 ```bash
 cd social-feed-frontend
 yarn
 yarn dev
 ```
 
-Environment:
-- `social-feed-frontend/.env` → `NEXT_PUBLIC_API_URL=http://localhost:8080/api`
+Frontend env:
+- Local: `social-feed-frontend/.env` uses `NEXT_PUBLIC_API_URL=http://localhost:8080/api`
+- Production: set `BACKEND_URL=https://<your-render-service>.onrender.com` on Vercel (no `/api`)
 
-### Tests
+## Tests
 
-**Backend**
+### Backend (Jest)
 ```bash
 cd social-feed-backend
 yarn test
 ```
 
-**Frontend**
+### Frontend (Vitest)
 ```bash
 cd social-feed-frontend
 yarn test
 ```
 
-### Notes / Current Constraints
-- “Public” currently means “visible to all authenticated users” because the feed endpoints are protected.
-- For “millions scale”, the next upgrades would be denormalized counters (commentCount/likeCount) and moving likes to a separate collection to avoid unbounded array growth on the Post document.
+## Notes / Constraints / Future Improvements
+
+- Public posts are currently “public to all authenticated users” because the posts API is protected by auth middleware.
+- For “millions-scale” growth:
+  - Move likes into a separate collection to avoid unbounded arrays on the Post/Comment documents.
+  - Denormalize and maintain `likeCount` and `commentCount` on Post to avoid aggregations on hot read paths.
+  - Add caching for feed pages and “who liked” lists where appropriate.
+  - Add security headers (CSP, etc.) at the edge and finalize a strict production CORS allowlist.
