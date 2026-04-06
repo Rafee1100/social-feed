@@ -123,7 +123,7 @@ const RegisterPage = () => {
                 <div className="col-lg-12 col-md-12 col-xl-12 col-sm-12">
                   <div className="_social_registration_form_btn _mar_t40 _mar_b60">
                     <button type="submit" className="_social_registration_form_btn_link _btn1">
-                      {isPending ? "Creating..." : "Login now"}
+                      {isPending ? "Creating..." : "Register"}
                     </button>
                   </div>
                 </div>
@@ -139,7 +139,7 @@ const RegisterPage = () => {
             <div className="col-xl-12 col-lg-12 col-md-12 col-sm-12">
               <div className="_social_registration_bottom_txt">
                 <p className="_social_registration_bottom_txt_para">
-                  Dont have an account? <Link href="/auth/login">Login</Link>
+                  Already have an account? <Link href="/auth/login">Login</Link>
                 </p>
               </div>
             </div>
