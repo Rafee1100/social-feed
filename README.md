@@ -85,6 +85,7 @@ This keeps auth cookies consistent and allows server components (like the `(main
 - **Reusable “Likes” modal**: one modal component used for post likes and comment likes.
 - **Zod validation**: consistent request validation with clear errors.
 - **Unit tests with mocks**: fast tests that validate business logic without requiring a database or external services.
+- **Design fidelity over CSS frameworks**: UI intentionally avoids Tailwind/other UI libraries to stick to the provided HTML/CSS design as requested (no alternative design).
 
 ## Running Locally
 
@@ -128,5 +129,4 @@ yarn test
 cd social-feed-frontend
 yarn test
 ```
-
 
